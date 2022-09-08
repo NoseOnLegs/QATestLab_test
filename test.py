@@ -1,177 +1,91 @@
+import time
+
 import allure
-from selenium.common import NoSuchElementException
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
-import selenium.webdriver.support.expected_conditions as exp_cond
+from selenium.common import TimeoutException
+
+from components.currencies import Currency
+from components.sorting_options import SortingOptions
 
 
-PORTAL_URL = 'http://prestashop-automation.qatestlab.com.ua/ru/'
-
-
-def __transform_price(given_price: str):
-    given_price = given_price[:5]
-    given_price = given_price.replace(',', '.')
-    return float(given_price)
-
-
+# class TestScript1:
 @allure.title("Open portal test")
-def test_open_portal(setup):
-    with allure.step("Open portal"):
-        browser = setup
-        browser.get(PORTAL_URL)
-
-    expected_title = 'prestashop-automation'
-    actual_title = browser.title
-
-    assert expected_title == actual_title
+def test_open_portal(app):
+    assert app.driver.title == 'prestashop-automation'
 
 
 @allure.title("Check 'popular' tab currency")
-def test_popular_tab_currency(setup):
-    browser = setup
-
+def test_popular_tab_currency(app):
     with allure.step("Find defined currency"):
-        element = browser.find_element(By.CSS_SELECTOR, 'span.expand-more:nth-child(2)')
-        text = element.text
-        defined_currency = text[-1]
+        selected_currency = app.header.get_currency()
 
     with allure.step("Find currency of 'popular' tab items"):
-        prices = browser.find_elements(By.CLASS_NAME, "price")
-        currencies = [price.text[-1] for price in prices]
+        currencies = app.main_page.get_all_products_currencies()
 
-    assert all([defined_currency == currency for currency in currencies])
-
-
-@allure.title("Set currency to USD")
-def test_set_currency_to_usd(setup):
-    browser = setup
-
-    with allure.step("Change currency"):
-        currency_list = browser.find_element(By.CLASS_NAME, "currency-selector")
-        currency_list.click()
-
-        wait = WebDriverWait(browser, 5)
-
-        usd = wait.until(exp_cond.presence_of_element_located((By.CSS_SELECTOR,
-                                                               "ul.dropdown-menu:nth-child(4) > "
-                                                               "li:nth-child(3) > "
-                                                               "a:nth-child(1)")))
-        usd.click()
+    assert all([currency in selected_currency for currency in currencies])
 
 
 @allure.title("Search for a dress")
-def test_search_dress(setup):
-    browser = setup
-
+def test_search_dress(app):
     with allure.step("Make search"):
-        element = browser.find_element(By.CLASS_NAME, 'ui-autocomplete-input')
-        element.send_keys("dress", Keys.ENTER)
+        app.header.make_search("dress")
 
     with allure.step("Check page is loaded"):
-        wait = WebDriverWait(browser, 5)
-        element = wait.until(exp_cond.presence_of_element_located((By.CLASS_NAME, "h2")))
-
-        assert element.text == "Результаты поиска".upper()
+        app.result_page.wait_until_page_loaded()
 
 
 @allure.title("Check search result number is correct")
-def test_result_number(setup):
-    browser = setup
-
+def test_result_number(app):
     with allure.step("Locate number of results"):
-        element = browser.find_element(By.TAG_NAME, "p")
-        result_number = int(element.text[-2])
+        result_number = app.result_page.get_number_of_results()
 
     with allure.step("Count number of products and compare with result number"):
-        list_of_products = browser.find_elements(By.CLASS_NAME, "thumbnail-container")
+        list_of_products = app.result_page.get_all_products()
 
         assert len(list_of_products) == result_number
 
 
 @allure.title("Check search results prices in USD")
-def test_search_result_prices_in_usd(setup):
-    browser = setup
-
+def test_search_result_prices_in_usd(app):
     with allure.step("Check currency"):
-        prices = browser.find_elements(By.CLASS_NAME, "price")
-        currencies = [price.text[-1] for price in prices]
+        app.header.set_currency(Currency.USD)
+        selected_currency = app.header.get_currency()
+        currencies = app.result_page.get_all_products_currencies()
 
-        assert all([currency == '$' for currency in currencies])
-
-
-@allure.title("Sort from lower to higher")
-def test_sort_by_asc(setup):
-    browser = setup
-
-    with allure.step("Locate dropdown list"):
-        dropdown = browser.find_element(By.CLASS_NAME, "select-title")
-        dropdown.click()
-
-    with allure.step("Click on sorting option"):
-        options = browser.find_elements(By.CLASS_NAME, "js-search-link")
-        for opt in options:
-            if "от высокой к низкой" in opt.text:
-                opt.click()
-                break
-
-    wait = WebDriverWait(browser, 5)
-    wait.until(exp_cond.staleness_of(dropdown))
+        assert all([currency in selected_currency for currency in currencies])
 
 
 @allure.title("Sorted not by discount price")
-def test_sorted_not_by_desc(setup):
-    browser = setup
-
+def test_sorted_not_by_desc(app):
+    app.result_page.sort_products(SortingOptions.PRICE_DESC)
     with allure.step("Locate containers and scrap prices"):
-        products = browser.find_elements(By.CLASS_NAME, "thumbnail-container")
-        prices_list = []
-        for product in products:
-            try:
-                price = product.find_element(By.CLASS_NAME, "regular-price")
-                prices_list.append(__transform_price(price.text))
-
-            except NoSuchElementException:
-                price = product.find_element(By.CLASS_NAME, 'price')
-                prices_list.append(__transform_price(price.text))
+        prices_list = app.result_page.get_all_products_prices(with_discount=True)
 
     with allure.step("Compare prices list with sorted list"):
         assert prices_list == sorted(prices_list, reverse=True)
 
 
 @allure.title("Discounted products contain regular and discounted prices")
-def test_discounted_products(setup):
-    browser = setup
-
+def test_discounted_products(app):
     with allure.step("Locate products"):
-        products_pricing = browser.find_elements(By.CLASS_NAME, "product-price-and-shipping")
+        products_pricing = app.result_page.get_all_products()
         for product in products_pricing:
-            children = product.find_elements(By.TAG_NAME, "span")
+            price_n_shipping = app.result_page.get_product_price_and_shipping(product)
 
-            assert len(children) == 1 or len(children) == 3
+            assert len(price_n_shipping) == 1 or len(price_n_shipping) == 3
 
 
-@allure.title("Test is discount correct")
-def test_actual_discount(setup):
-    browser = setup
-
+@allure.title("Test discount is correct")
+def test_actual_discount(app):
     with allure.step("Locate discounted products"):
-        price_n_shipping = browser.find_elements(By.CLASS_NAME, "product-price-and-shipping")
+        products = app.result_page.get_all_products()
         discounts = []
-        for product in price_n_shipping:
-            children = product.find_elements(By.TAG_NAME, "span")
-            if len(children) == 3:
-                discounts.append(product)
+        for product in products:
+            price_n_shipping = app.result_page.get_product_price_and_shipping(product)
+            if len(price_n_shipping) == 3:
+                discounts.append(price_n_shipping)
 
     with allure.step("Calculate actual discount and compare"):
-        regular_price = browser.find_element(By.CLASS_NAME, "regular-price")
-        discount = browser.find_element(By.CLASS_NAME, "discount-percentage")
-        actual_price = browser.find_element(By.CLASS_NAME, "price")
+        for item in discounts:
+            calculated_price = item["regular_price"] * (100 - item["discount"]) / 100
 
-        regular_price = __transform_price(regular_price.text)
-        actual_price = __transform_price(actual_price.text)
-        discount = int(discount.text[1])
-
-        calculated_price = regular_price * (100-discount) / 100
-
-        assert actual_price == round(calculated_price, 2)
+        assert item["actual_price"] == round(calculated_price, 2)
