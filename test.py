@@ -1,7 +1,4 @@
-import time
-
 import allure
-from selenium.common import TimeoutException
 
 from components.currencies import Currency
 from components.sorting_options import SortingOptions
