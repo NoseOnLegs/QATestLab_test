@@ -10,7 +10,7 @@ PORTAL_URL = 'http://prestashop-automation.qatestlab.com.ua/uk/'
 def app():
     capabilities = {
         "browserName": "firefox",
-        "browserVersion": "104.0",
+        "browserVersion": "",
         "selenoid:options": {
             "enableVNC": True,
             "enableVideo": False
