@@ -11,7 +11,7 @@ pipeline {
     post {
         always {
             sh 'zip -r results.zip allure-results'
-            sh 'mv results.zip $HOME/Documents'
+            sh 'mv results.zip $HOME'
         }
     }
 }
