@@ -1,9 +1,5 @@
 pipeline {
-    agent {
-        docker {
-            image 'aerokube/selenoid:1.10.8'
-        }
-    }
+    agent any
     stages {
         stage('Test') {
             steps {
