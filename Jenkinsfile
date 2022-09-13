@@ -3,7 +3,8 @@ pipeline {
     stages {
         stage('Test') {
             steps {
-                sh '''python -m venv venv
+                sh '''apt-get install python
+                      python -m venv venv
                       source /venv/bin/activate
                       pip install -r requirements.txt
                 '''
