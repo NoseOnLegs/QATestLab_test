@@ -4,6 +4,7 @@ from selenium import webdriver
 from app.app import App
 
 PORTAL_URL = 'http://prestashop-automation.qatestlab.com.ua/uk/'
+pytest_plugins = 'allure'
 
 
 @pytest.fixture(scope="session")
