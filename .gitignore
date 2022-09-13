@@ -1,6 +1,6 @@
 __pycache__/
 geckodriver.log
-results/
+allure-results/
 venv/
 /.idea/
 /.pytest_cache/

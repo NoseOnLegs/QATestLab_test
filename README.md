@@ -4,6 +4,6 @@
 ## Usage ##
 To run the script:
 ```
-pytest test.py --aluredir=test-results/
+pytest test.py --alluredir=allure-results/
 ```
 
